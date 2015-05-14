@@ -2,6 +2,8 @@ clear;close all
 
 file = 'R1032_2012-07-06_15.12/R1032_2012-07-06_15.12.plg';
 
+% Hello silly sam 
+
 CurrentHeightStr = 'Builds.State.CurrentBuild.CurrentHeight';
 TaskStr = 'Process.ProcessManager.Task';
 
