@@ -2,8 +2,6 @@ clear;close all
 
 file = 'R1032_2012-07-06_15.12/R1032_2012-07-06_15.12.plg';
 
-% Hello silly sam 
-
 CurrentHeightStr = 'Builds.State.CurrentBuild.CurrentHeight';
 TaskStr = 'Process.ProcessManager.Task';
 
@@ -60,7 +58,7 @@ TotalTaskOccurences = sum(Match);   %gives a row vector with each entry corisond
 TotalTaskDuration = sum(TaskDurationSorted);%gives a row vector with each entry corisonding to the Total times spent on each task
 AverageTaskTime = TotalTaskDuration ./ TotalTaskOccurences;
 
-TaskTimeC = cellstr(datestr(AverageTaskTime,'HH:MM:SS.FFF'));   %Converts from the purely numeric number of days to standrad time date format
+TaskTimeC = cellstr(datestr(TotalTaskDuration,'HH:MM:SS.FFF'));   %Converts from the purely numeric number of days to standrad time date format
 AverageTaskTimeC = cellstr(datestr(AverageTaskTime,'HH:MM:SS.FFF'));  %Also converst from strings to a cell array (like a vector) to allow to be added
 
 
