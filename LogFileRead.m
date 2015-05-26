@@ -1,8 +1,17 @@
 clear;close all
+%% Decide what to analyse
 
 [FileNameZ,PathName,FilterIndex] = uigetfile('*.zip'); %user selects zip file
 FileName = FileNameZ(1:end-4);  %remove last four characters '.zip'
 
+
+PosAnalyse  = {'Time per task per layer','Baseplate temperature'}; %list of possible tasks
+
+Analyse = listdlg('PromptString','Select analysis',...
+                'SelectionMode','multiple', 'ListString',PosAnalyse,...
+                'Name','Select Tasks','ListSize',[400 350]);
+
+%%
 cd(PathName); InFolder = dir;  % change directory to that selected and list the contensts fo teh directory
 
 DirectoriesInFolder = InFolder([InFolder.isdir]); % list of folders only in directory
@@ -19,19 +28,8 @@ if Folder>0
 else
     mkdir(FileName); unzip(FileNameZ,FileName);  cd(FileName) %make new directory with name of file and unzip to there
 end
-%% Decide what to analyse
-
-PosAnalyse  = {'Time per task per layer','Baseplate temperature'}; %list of possible tasks
-
-Analyse = listdlg('PromptString','Select analysis',...
-                'SelectionMode','multiple', 'ListString',PosAnalyse,...
-                'Name','Select Tasks','ListSize',[400 350]);
 
 %%
-
-CurrentHeightStr = 'Builds.State.CurrentBuild.CurrentHeight';
-TaskStr = 'Process.ProcessManager.Task';
-BaseTempStr = 'OPC.Temperature.BottomTemperature';
 
 FID = fopen([FileName '.plg']);%
 
@@ -43,12 +41,12 @@ TimeStamp = datenum(C{1},'yyyy-mm-dd HH:MM:SS.FFF'); %converts the timestamp str
 
 %%
 
-LayerHeightIdx = strcmp(CurrentHeightStr,C{2});
+LayerHeightIdx = strcmp('Builds.State.CurrentBuild.CurrentHeight',C{2});
 
 Height = str2double(C{5}(LayerHeightIdx));
 LayerStartTime = TimeStamp(LayerHeightIdx);
 
-TaskIdx = strcmp(TaskStr,C{2});
+TaskIdx = strcmp('Process.ProcessManager.Task',C{2});
 
 Task = C{5}(TaskIdx);
 TaskStartTime = TimeStamp(TaskIdx);
@@ -129,8 +127,10 @@ if any(Analyse==1)
         'Name','Select Tasks','ListSize',[400 350],'InitialValue',[7 10:12 14:length(UniqueTasks)]);
             
     figure('Name','Time for each task in height bins')
-    area(Height , HeightBinsTask(:,Include) * 24*60*60,'LineStyle','none')
-    colormap(jet)  %Change the colour here using standard matlab colour maps or the random one defined above
+    plot(Height , HeightBinsTask(:,Include) * 24*60*60,'linewidth',0.01)%,'LineStyle','none')
+    hold on
+%     plot(Height , sum(HeightBinsTask(:,Include),2) * 24*60*60)
+    colormap(jet)  
     xlabel('Height (mm)')
     ylabel('Time per task (s)')
     legend(UniqueTasks(Include),'Location','EastOutside')
@@ -138,25 +138,34 @@ if any(Analyse==1)
     box on
 
 end
-%% Analyse temperature change
+
 if any(Analyse==2)
-    
-    TempIdx = strcmp(BaseTempStr,C{2});
+    %% Analyse temperature change
+    TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
+        TempIdx2 = strcmp('OPC.Temperature.ExtraTemp2',C{2});
+
     BasePlateTemperatures = str2double(C{5}(TempIdx));
+    ExtraTemperatures = str2double(C{5}(TempIdx2));
+   
     BaseTempTime = TimeStamp(TempIdx);
+    ExtraTemperaturesTime = TimeStamp(TempIdx2);
     figure
     axes('outerposition',[0 0.5 1 0.5])
     plot((BaseTempTime-TaskStartTime(1))*24,BasePlateTemperatures)
+    hold on
+    plot((ExtraTemperaturesTime-TaskStartTime(1))*24,ExtraTemperatures,'r')
+
     xlabel('Time (hours)')
     ylabel(sprintf('Baseplate temperature (%cC)', char(176)))
 
-    k = zeros(length(BaseTempTime),1);
-    for ii = 1:length(BaseTempTime)
-        k(ii) = sum(TimeStamp(LayerHeightIdx)<=BaseTempTime(ii));
-    end
+    [~,k] = histc(BaseTempTime,[LayerStartTime; inf]);
+    [~,k2] = histc(ExtraTemperaturesTime,[LayerStartTime; inf]);
     
     axes('outerposition',[0 0 1 0.5])
     plot(Height(k),BasePlateTemperatures)
+    hold on
+    plot(Height(k2),ExtraTemperatures)
+
     ylabel(sprintf('Baseplate temperature (%cC)', char(176)))
     xlabel('Build height (mm)')
     
@@ -166,7 +175,21 @@ if any(Analyse==2)
     TemperatureTable.Properties.VariableNames =  {'Time','Height','Temperature'};
     
     writetable(TemperatureTable,'Temperatures.txt','Delimiter','\t')
+    
+    fclose(TTextFileID);
+%%
 
+% TempChange = zeros(NumberOfLayers,4);
+% for ii = 1:NumberOfLayers
+%     
+%     Temp = BasePlateTemperatures(k==ii);
+%     
+%     TempChange(ii,1) = mean(Temp);
+%     TempChange(ii,2) = std(Temp);
+%     TempChange(ii,3) = max(Temp)-TempChange(ii,1);
+%     TempChange(ii,4) = min(Temp)-TempChange(ii,1);
+%     
+% end
 
 end
 
