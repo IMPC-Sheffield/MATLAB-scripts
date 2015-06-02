@@ -1,11 +1,12 @@
-clear;close all
+%clear;close all
 %% Decide what to analyse
 
+    
 [FileNameZ,PathName,FilterIndex] = uigetfile('*.zip'); %user selects zip file
 FileName = FileNameZ(1:end-4);  %remove last four characters '.zip'
 
 
-PosAnalyse  = {'Time per task per layer','Baseplate temperature vs height','Temperatures'}; %list of possible tasks
+PosAnalyse  = {'Time per task per layer','Baseplate temperature vs height','Temperatures','Baseplate Temperature Comparison (pick second file)'}; %list of possible tasks
 
 Analyse = listdlg('PromptString','Select analysis',...
                 'SelectionMode','multiple', 'ListString',PosAnalyse,...
@@ -141,7 +142,7 @@ end
 
 if any(Analyse==2)
     %% Analyse temperature change
-    %% Analyse temperature change
+    
     TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
         TempIdx2 = strcmp('OPC.Temperature.ExtraTemp2',C{2});
 
@@ -187,29 +188,99 @@ if any(Analyse==3)
     TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
         TempIdx1 = strcmp('OPC.Temperature.ExtraTemp1',C{2});
         TempIdx2 = strcmp('OPC.Temperature.ExtraTemp2',C{2});
+        TempIdx3 = strcmp('OPC.Temperature.ColumnTemperature',C{2});
 
     BasePlateTemperatures = str2double(C{5}(TempIdx));
     ExtraTemperature1 = str2double(C{5}(TempIdx1));
     ExtraTemperature2 = str2double(C{5}(TempIdx2));
+    ColumnTemperature = str2double(C{5}(TempIdx3));
     
     BaseTempTime = TimeStamp(TempIdx);
     ExtraTemperaturesTime1 = TimeStamp(TempIdx1);
     ExtraTemperaturesTime2 = TimeStamp(TempIdx2);
+    ColumnTemperatureTime = TimeStamp(TempIdx3);
     
     
-    figure
+    %figure
     plot((BaseTempTime-TaskStartTime(1))*24,BasePlateTemperatures)
     hold on
     plot((ExtraTemperaturesTime1-TaskStartTime(1))*24,ExtraTemperature1,'r')
     hold on
     plot((ExtraTemperaturesTime2-TaskStartTime(1))*24,ExtraTemperature2,'g')
+    hold on
+    plot((ColumnTemperatureTime-TaskStartTime(1))*24,ColumnTemperature,'m')
     
-    legend('Bottom temperature','Thermocouple 1','Thermocouple 2')
+    legend('Bottom Temperature','Thermocouple 1','Thermocouple 2','Column Temperature')
 
     xlabel('Time (hours)')
     ylabel(sprintf('Temperature (%cC)', char(176)))
 end
 
+if (Analyse==4)
+
+    %%Compare Bottom temperatures from two files
+
+    [FileNameZ,PathName,FilterIndex] = uigetfile('*.zip'); %user selects zip file
+    FileName = FileNameZ(1:end-4);  %remove last four characters '.zip'
+
+
+    %%
+    cd(PathName); InFolder = dir;  % change directory to that selected and list the contensts fo teh directory
+
+    DirectoriesInFolder = InFolder([InFolder.isdir]); % list of folders only in directory
+
+    Folder = 0;
+    for ii = 1:length(DirectoriesInFolder)
+        if  strcmp(DirectoriesInFolder(ii).name,FileName) % find if unzipped version exists already
+            Folder = ii;
+        end
+    end
+
+    if Folder>0
+        cd(DirectoriesInFolder(Folder).name)
+    else
+        mkdir(FileName); unzip(FileNameZ,FileName);  cd(FileName) %make new directory with name of file and unzip to there
+    end
+
+    %%
+
+    FID = fopen([FileName '.plg']);%
+
+    D = textscan(FID,' %s %s %s %s %s','delimiter', '|','CommentStyle', '#' );
+
+    fclose(FID);  %This closes the file
+    
+    TaskIdx2 = strcmp('Process.ProcessManager.Task',D{2});
+    TimeStamp2 = datenum(D{1},'yyyy-mm-dd HH:MM:SS.FFF'); %converts the timestamp string to a number to work with number is number of days since (January 1, 0000)
+    Task2 = D{5}(TaskIdx2);
+    TaskStartTime2 = TimeStamp2(TaskIdx2);
+    
+   %Plot Temperatures from first Log file
+    TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
+    BasePlateTemperatures = str2double(C{5}(TempIdx));
+    BaseTempTime = TimeStamp(TempIdx);
+        
+    figure
+    plot((BaseTempTime-TaskStartTime(1))*24,BasePlateTemperatures)
+    hold on
+   
+    %Plot Temperatures from Second Log file
+    TempIdx2 = strcmp('OPC.Temperature.BottomTemperature',D{2});
+    BasePlateTemperatures2 = str2double(D{5}(TempIdx2));    
+    BaseTempTime2 = TimeStamp2(TempIdx2);
+    plot((BaseTempTime2-TaskStartTime2(1))*24,BasePlateTemperatures2)
+            
+    legend('Bottom Temperature1','Bottom Temperature2')
+    xlabel('Time (hours)')
+    ylabel(sprintf('Temperature (%cC)', char(176)))
+    
+    
+
+     
+    
+    
+    
+end
 
 % TempChange = zeros(NumberOfLayers,4);
 % for ii = 1:NumberOfLayers
