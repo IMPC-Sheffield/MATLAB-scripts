@@ -5,7 +5,7 @@ clear;close all
 FileName = FileNameZ(1:end-4);  %remove last four characters '.zip'
 
 
-PosAnalyse  = {'Time per task per layer','Baseplate temperature'}; %list of possible tasks
+PosAnalyse  = {'Time per task per layer','Baseplate temperature vs height','Temperatures'}; %list of possible tasks
 
 Analyse = listdlg('PromptString','Select analysis',...
                 'SelectionMode','multiple', 'ListString',PosAnalyse,...
@@ -141,6 +141,7 @@ end
 
 if any(Analyse==2)
     %% Analyse temperature change
+    %% Analyse temperature change
     TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
         TempIdx2 = strcmp('OPC.Temperature.ExtraTemp2',C{2});
 
@@ -177,7 +178,38 @@ if any(Analyse==2)
     writetable(TemperatureTable,'Temperatures.txt','Delimiter','\t')
     
     fclose(TTextFileID);
-%%
+
+end
+
+if any(Analyse==3)
+    %% Analayse Temperatures with 3 thermocuples for preheat tests
+  
+    TempIdx = strcmp('OPC.Temperature.BottomTemperature',C{2});
+        TempIdx1 = strcmp('OPC.Temperature.ExtraTemp1',C{2});
+        TempIdx2 = strcmp('OPC.Temperature.ExtraTemp2',C{2});
+
+    BasePlateTemperatures = str2double(C{5}(TempIdx));
+    ExtraTemperature1 = str2double(C{5}(TempIdx1));
+    ExtraTemperature2 = str2double(C{5}(TempIdx2));
+    
+    BaseTempTime = TimeStamp(TempIdx);
+    ExtraTemperaturesTime1 = TimeStamp(TempIdx1);
+    ExtraTemperaturesTime2 = TimeStamp(TempIdx2);
+    
+    
+    figure
+    plot((BaseTempTime-TaskStartTime(1))*24,BasePlateTemperatures)
+    hold on
+    plot((ExtraTemperaturesTime1-TaskStartTime(1))*24,ExtraTemperature1,'r')
+    hold on
+    plot((ExtraTemperaturesTime2-TaskStartTime(1))*24,ExtraTemperature2,'g')
+    
+    legend('Bottom temperature','Thermocouple 1','Thermocouple 2')
+
+    xlabel('Time (hours)')
+    ylabel(sprintf('Temperature (%cC)', char(176)))
+end
+
 
 % TempChange = zeros(NumberOfLayers,4);
 % for ii = 1:NumberOfLayers
@@ -191,5 +223,5 @@ if any(Analyse==2)
 %     
 % end
 
-end
+
 
